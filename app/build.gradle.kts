@@ -72,4 +72,13 @@ dependencies {
     debugImplementation(libs.androidx.ui.test.manifest)
 
 
+    // ... (all your other dependencies like firebase, navigation, etc.)
+
+    // Add this line for image loading
+    implementation("io.coil-kt:coil-compose:2.6.0")
+
+    implementation(platform("com.google.firebase:firebase-bom:33.1.2"))
+    implementation("com.google.firebase:firebase-auth")
+    // ...
+
 }
