@@ -71,6 +71,8 @@ dependencies {
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
 
+    // ADD THIS LINE - IT IS THE FIX
+    implementation("androidx.compose.material:material-icons-extended-android:1.6.8")
 
     // ... (all your other dependencies like firebase, navigation, etc.)
 
