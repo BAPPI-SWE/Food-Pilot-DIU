@@ -1,6 +1,4 @@
-// --- File 1: MainScreen.kt (UPDATED) ---
-// Open this file again: com.diu.foodpilot.user/MainScreen.kt
-// Replace all the code with this updated version to include the new navigation route.
+
 @file:OptIn(ExperimentalMaterial3Api::class)
 
 package com.diu.foodpilot.user
@@ -19,6 +17,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -29,6 +28,7 @@ import androidx.navigation.navArgument
 import com.diu.foodpilot.user.navigation.NavigationItem
 import com.diu.foodpilot.user.screens.*
 import com.diu.foodpilot.user.ui.theme.PrimaryRed
+import com.diu.foodpilot.user.viewmodel.CartViewModel
 import java.net.URLDecoder
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
@@ -37,23 +37,19 @@ import java.nio.charset.StandardCharsets
 @Composable
 fun MainScreen() {
     val navController = rememberNavController()
+    val cartViewModel: CartViewModel = viewModel()
 
     Scaffold(
         bottomBar = {
-            // The bottom bar code is the same as before
-            NavigationBar(
-                containerColor = Color.White
-            ) {
+            NavigationBar(containerColor = Color.White) {
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
                 val currentRoute = navBackStackEntry?.destination?.route
-
                 val items = listOf(
                     NavigationItem.Home,
                     NavigationItem.Cart,
                     NavigationItem.Orders,
                     NavigationItem.Profile
                 )
-
                 items.forEach { item ->
                     NavigationBarItem(
                         selected = currentRoute?.startsWith(item.route) == true,
@@ -83,16 +79,17 @@ fun MainScreen() {
             NavHost(navController, startDestination = NavigationItem.Home.route) {
                 composable(NavigationItem.Home.route) {
                     HomeScreen(onRestaurantClick = { restaurantId, restaurantName ->
-                        // URL-encode the name to handle special characters
                         val encodedName = URLEncoder.encode(restaurantName, StandardCharsets.UTF_8.toString())
                         navController.navigate("restaurant_menu/$restaurantId/$encodedName")
                     })
                 }
-                composable(NavigationItem.Cart.route) { CartScreen() }
+                composable(NavigationItem.Cart.route) {
+                    // Pass the cartViewModel to the CartScreen
+                    CartScreen(cartViewModel = cartViewModel)
+                }
                 composable(NavigationItem.Orders.route) { OrdersScreen() }
                 composable(NavigationItem.Profile.route) { ProfileScreen() }
 
-                // New Route for the Menu Screen
                 composable(
                     "restaurant_menu/{restaurantId}/{restaurantName}",
                     arguments = listOf(
@@ -100,14 +97,17 @@ fun MainScreen() {
                         navArgument("restaurantName") { type = NavType.StringType }
                     )
                 ) { backStackEntry ->
-                    val restaurantId = backStackEntry.arguments?.getString("restaurantId")
                     val restaurantName = backStackEntry.arguments?.getString("restaurantName")?.let {
-                        // Decode the name back to its original form
                         URLDecoder.decode(it, StandardCharsets.UTF_8.toString())
                     }
                     RestaurantMenuScreen(
                         restaurantName = restaurantName,
-                        onNavigateBack = { navController.popBackStack() }
+                        onNavigateBack = { navController.popBackStack() },
+                        cartViewModel = cartViewModel,
+                        // THE NEW LOGIC: This now calls the method in our CartViewModel
+                        onAddToCart = { restaurant, selection ->
+                            cartViewModel.addSelectionToCart(restaurant, selection)
+                        }
                     )
                 }
             }

@@ -2,73 +2,81 @@
 package com.diu.foodpilot.user.viewmodel
 
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
 import com.diu.foodpilot.user.data.model.CartItem
-import com.diu.foodpilot.user.data.model.FoodItem
+import com.diu.foodpilot.user.data.model.Restaurant
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+
+// A helper data class to hold restaurant info along with its cart items
+data class RestaurantCart(
+    val restaurant: Restaurant,
+    val items: List<CartItem>
+)
 
 class CartViewModel : ViewModel() {
 
-    private val _cartItems = MutableStateFlow<List<CartItem>>(emptyList())
-    val cartItems: StateFlow<List<CartItem>> = _cartItems.asStateFlow()
+    // The key is now the restaurantId, and the value is the RestaurantCart
+    private val _restaurantCarts = MutableStateFlow<Map<String, RestaurantCart>>(emptyMap())
+    val restaurantCarts: StateFlow<Map<String, RestaurantCart>> = _restaurantCarts.asStateFlow()
 
-    // Expose the total number of items for the badge
-    // The missing imports for this line are now added above.
-    val totalItemCount: StateFlow<Int> = cartItems.map { list ->
-        list.sumOf { it.quantity }
-    }.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.Eagerly,
-        initialValue = 0
-    )
+    fun addSelectionToCart(restaurant: Restaurant, selection: Map<String, CartItem>) {
+        if (selection.isEmpty()) return
 
+        _restaurantCarts.update { currentCarts ->
+            val mutableCarts = currentCarts.toMutableMap()
+            val existingCart = mutableCarts[restaurant.id]
+            val itemsToAdd = selection.values.toList()
 
-    fun addItem(foodItem: FoodItem) {
-        _cartItems.update { currentList ->
-            val existingItem = currentList.find { it.foodId == foodItem.id }
-            if (existingItem != null) {
-                // If item exists, update its quantity
-                currentList.map {
-                    if (it.foodId == foodItem.id) {
-                        it.copy(quantity = it.quantity + 1)
+            if (existingCart != null) {
+                // Merge new selection with existing items in the cart for this restaurant
+                val updatedItems = existingCart.items.toMutableList()
+                itemsToAdd.forEach { newItem ->
+                    val existingItemIndex = updatedItems.indexOfFirst { it.foodId == newItem.foodId }
+                    if (existingItemIndex != -1) {
+                        // If item already exists, just update its quantity
+                        val oldItem = updatedItems[existingItemIndex]
+                        updatedItems[existingItemIndex] = oldItem.copy(quantity = oldItem.quantity + newItem.quantity)
                     } else {
-                        it
+                        // Otherwise, add the new item
+                        updatedItems.add(newItem)
                     }
                 }
+                mutableCarts[restaurant.id] = existingCart.copy(items = updatedItems)
             } else {
-                // If item doesn't exist, add it to the list
-                currentList + CartItem(
-                    foodId = foodItem.id,
-                    name = foodItem.name,
-                    quantity = 1,
-                    price = foodItem.price
-                )
+                // If there's no cart for this restaurant yet, create a new one
+                mutableCarts[restaurant.id] = RestaurantCart(restaurant, itemsToAdd)
             }
+            mutableCarts
         }
     }
 
-    fun removeItem(foodItem: FoodItem) {
-        _cartItems.update { currentList ->
-            val existingItem = currentList.find { it.foodId == foodItem.id }
-            if (existingItem != null && existingItem.quantity > 1) {
-                // If quantity > 1, decrease it
-                currentList.map {
-                    if (it.foodId == foodItem.id) {
-                        it.copy(quantity = it.quantity - 1)
-                    } else {
-                        it
-                    }
-                }
+    fun updateItemQuantity(restaurantId: String, foodId: String, change: Int) {
+        _restaurantCarts.update { currentCarts ->
+            val mutableCarts = currentCarts.toMutableMap()
+            val targetCart = mutableCarts[restaurantId] ?: return@update currentCarts
+
+            val updatedItems = targetCart.items.toMutableList()
+            val itemIndex = updatedItems.indexOfFirst { it.foodId == foodId }
+            if (itemIndex == -1) return@update currentCarts
+
+            val item = updatedItems[itemIndex]
+            val newQuantity = item.quantity + change
+
+            if (newQuantity > 0) {
+                updatedItems[itemIndex] = item.copy(quantity = newQuantity)
             } else {
-                // If quantity is 1 or item doesn't exist, remove it entirely
-                currentList.filterNot { it.foodId == foodItem.id }
+                updatedItems.removeAt(itemIndex)
             }
+
+            if (updatedItems.isEmpty()) {
+                // If the cart for this restaurant becomes empty, remove it entirely
+                mutableCarts.remove(restaurantId)
+            } else {
+                mutableCarts[restaurantId] = targetCart.copy(items = updatedItems)
+            }
+            mutableCarts
         }
     }
 }

@@ -1,5 +1,4 @@
-// Open this file: app/src/main/java/com/diu/foodpilot/user/screens/RestaurantMenuScreen.kt
-// Replace the ENTIRE content of the file with this new version.
+
 
 @file:OptIn(ExperimentalMaterial3Api::class)
 
@@ -16,9 +15,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
-// We are now importing a different icon set to avoid the error
-import androidx.compose.material.icons.outlined.Remove
-import androidx.compose.material.icons.filled.ShoppingCart
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -33,7 +30,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.rememberAsyncImagePainter
+import com.diu.foodpilot.user.data.model.CartItem
 import com.diu.foodpilot.user.data.model.FoodItem
+import com.diu.foodpilot.user.data.model.Restaurant
 import com.diu.foodpilot.user.ui.theme.LightPink
 import com.diu.foodpilot.user.viewmodel.CartViewModel
 import com.diu.foodpilot.user.viewmodel.RestaurantMenuViewModel
@@ -42,11 +41,13 @@ import com.diu.foodpilot.user.viewmodel.RestaurantMenuViewModel
 fun RestaurantMenuScreen(
     restaurantName: String?,
     onNavigateBack: () -> Unit,
-    menuViewModel: RestaurantMenuViewModel = viewModel(),
-    cartViewModel: CartViewModel = viewModel() // Add CartViewModel
+    cartViewModel: CartViewModel,
+    onAddToCart: (Restaurant, Map<String, CartItem>) -> Unit,
+    menuViewModel: RestaurantMenuViewModel = viewModel()
 ) {
     val currentMenu by menuViewModel.currentMenu.collectAsState()
-    val cartItems by cartViewModel.cartItems.collectAsState()
+    val restaurantDetails by menuViewModel.restaurantDetails.collectAsState()
+    val temporarySelection by menuViewModel.temporarySelection.collectAsState()
 
     Scaffold(
         topBar = {
@@ -65,59 +66,101 @@ fun RestaurantMenuScreen(
             )
         },
         bottomBar = {
-            AnimatedVisibility(visible = cartItems.isNotEmpty()) {
-                Row(
+            AnimatedVisibility(visible = temporarySelection.isNotEmpty()) {
+                Button(
+                    onClick = {
+                        restaurantDetails?.let {
+                            onAddToCart(it, temporarySelection)
+                            menuViewModel.clearTemporarySelection()
+                            onNavigateBack()
+                        }
+                    },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(Color.White)
                         .padding(16.dp),
-                    horizontalArrangement = Arrangement.SpaceAround,
-                    verticalAlignment = Alignment.CenterVertically
+                    shape = RoundedCornerShape(12.dp),
+                    contentPadding = PaddingValues(16.dp),
+                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 8.dp)
                 ) {
-                    Button(onClick = { /* TODO: Navigate to Cart Screen */ }) {
-                        Icon(Icons.Filled.ShoppingCart, contentDescription = "Cart Icon")
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("View Cart (${cartItems.sumOf { it.quantity }})")
-                    }
-                    Button(onClick = { /* TODO: Place Order Logic */ }) {
-                        Text("Place Order")
-                    }
+                    Text("Add To Cart", fontSize = 18.sp)
                 }
             }
         }
     ) { paddingValues ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .background(LightPink),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp)
-        ) {
-            item { Text("Pre-Order", style = MaterialTheme.typography.headlineMedium) }
-            item { PreOrderCard(title = "Breakfast", time = "Order: 7am-10am", delivery = "Delivery: 10:30am") }
-            item { PreOrderCard(title = "Launch", time = "Order: 10am-12pm", delivery = "Delivery: 1:30pm") }
-            item { PreOrderCard(title = "Dinner", time = "Order: 4pm-6pm", delivery = "Delivery: 8:00pm") }
-
-            item {
-                Spacer(modifier = Modifier.height(16.dp))
-                Text("Current Menu", style = MaterialTheme.typography.headlineMedium)
+        // THE FIX: Show a loading indicator until the restaurant details have been fetched.
+        if (restaurantDetails == null) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
             }
-            items(currentMenu) { foodItem ->
-                val cartItem = cartItems.find { it.foodId == foodItem.id }
-                FoodItemCard(
-                    foodItem = foodItem,
-                    quantity = cartItem?.quantity ?: 0,
-                    onAddItem = { cartViewModel.addItem(foodItem) },
-                    onRemoveItem = { cartViewModel.removeItem(foodItem) }
-                )
+        } else {
+            val isInstantDeliveryAvailable = restaurantDetails!!.isInstantDeliveryAvailable
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .background(LightPink),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                item { Text("Pre-Order (Always Available)", style = MaterialTheme.typography.headlineSmall) }
+                item { PreOrderCard(title = "Breakfast", time = "Order: 7am-10am", delivery = "Delivery: 10:30am") }
+                item { PreOrderCard(title = "Launch", time = "Order: 10am-12pm", delivery = "Delivery: 1:30pm") }
+                item { PreOrderCard(title = "Dinner", time = "Order: 4pm-6pm", delivery = "Delivery: 8:00pm") }
+
+                // UI CHANGE: The indicator is now inside a Row with the title.
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text("Current Menu", style = MaterialTheme.typography.headlineSmall)
+                        DeliveryStatusIndicator(isAvailable = isInstantDeliveryAvailable)
+                    }
+                }
+
+                items(currentMenu) { foodItem ->
+                    val quantity = temporarySelection[foodItem.id]?.quantity ?: 0
+                    FoodItemCard(
+                        foodItem = foodItem,
+                        quantity = quantity,
+                        enabled = isInstantDeliveryAvailable,
+                        onQuantityChange = { change ->
+                            menuViewModel.updateTemporarySelection(foodItem, change)
+                        }
+                    )
+                }
             }
         }
     }
 }
 
 @Composable
-fun PreOrderCard(title: String, time: String, delivery: String) {
+fun DeliveryStatusIndicator(isAvailable: Boolean) {
+    val backgroundColor = if (isAvailable) Color(0xFFC8E6C9) else Color(0xFFFFCDD2)
+    val textColor = if (isAvailable) Color(0xFF2E7D32) else Color(0xFFC62828)
+    val text = if (isAvailable) "Available" else "Unavailable"
+
+    Card(
+        shape = RoundedCornerShape(8.dp),
+        colors = CardDefaults.cardColors(containerColor = backgroundColor)
+    ) {
+        Text(
+            text = text,
+            color = textColor,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+        )
+    }
+}
+
+// PreOrderCard is now interactive
+@Composable
+fun PreOrderCard(
+    title: String,
+    time: String,
+    delivery: String
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
@@ -136,7 +179,7 @@ fun PreOrderCard(title: String, time: String, delivery: String) {
                 Text(delivery, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
             }
             Icon(
-                imageVector = Icons.Filled.Add,
+                imageVector = Icons.Default.Add,
                 contentDescription = "Order " + title,
                 modifier = Modifier.size(24.dp)
             )
@@ -144,17 +187,22 @@ fun PreOrderCard(title: String, time: String, delivery: String) {
     }
 }
 
+// FoodItemCard is completely reworked
 @Composable
 fun FoodItemCard(
     foodItem: FoodItem,
     quantity: Int,
-    onAddItem: () -> Unit,
-    onRemoveItem: () -> Unit
+    enabled: Boolean,
+    onQuantityChange: (Int) -> Unit
 ) {
+    val contentColor = if (enabled) Color.Unspecified else Color.Gray
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color.White.copy(alpha = if (enabled) 1f else 0.6f)
+        )
     ) {
         Row(
             modifier = Modifier.padding(8.dp),
@@ -166,12 +214,13 @@ fun FoodItemCard(
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
                     .size(80.dp)
-                    .clip(RoundedCornerShape(8.dp))
+                    .clip(RoundedCornerShape(8.dp)),
+                alpha = if (enabled) 1f else 0.5f
             )
             Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(foodItem.name, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                Text("Price: ${foodItem.price} BDT", color = MaterialTheme.colorScheme.primary)
+                Text(foodItem.name, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = contentColor)
+                Text("Price: ${foodItem.price} BDT", color = MaterialTheme.colorScheme.primary.copy(alpha = if (enabled) 1f else 0.5f))
             }
 
             Row(
@@ -179,23 +228,30 @@ fun FoodItemCard(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 if (quantity > 0) {
-                    IconButton(onClick = onRemoveItem, modifier = Modifier.size(32.dp)) {
+                    IconButton(
+                        onClick = { onQuantityChange(-1) },
+                        enabled = enabled,
+                        modifier = Modifier.size(32.dp)
+                    ) {
                         Icon(
-                            // THE FIX: Using a different icon from a different package
-                            imageVector = Icons.Outlined.Remove,
-                            contentDescription = "Remove Item",
-                            tint = MaterialTheme.colorScheme.primary
+                            imageVector = Icons.Default.Remove,
+                            contentDescription = "Remove one",
+                            tint = if(enabled) MaterialTheme.colorScheme.primary else Color.Gray
                         )
                     }
-                    Text(text = "$quantity", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                    Text(text = "$quantity", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = contentColor)
                 }
-                IconButton(onClick = onAddItem, modifier = Modifier.size(32.dp)) {
+                IconButton(
+                    onClick = { onQuantityChange(1) },
+                    enabled = enabled,
+                    modifier = Modifier.size(32.dp)
+                ) {
                     Icon(
-                        imageVector = Icons.Filled.Add,
-                        contentDescription = "Add Item",
-                        tint = Color.White,
+                        imageVector = Icons.Default.Add,
+                        contentDescription = "Add one",
+                        tint = if (enabled) Color.White else Color.LightGray,
                         modifier = Modifier
-                            .background(MaterialTheme.colorScheme.primary, CircleShape)
+                            .background(if (enabled) MaterialTheme.colorScheme.primary else Color.Gray, CircleShape)
                             .padding(4.dp)
                     )
                 }

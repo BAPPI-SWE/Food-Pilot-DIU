@@ -5,5 +5,6 @@ data class Restaurant(
     val id: String = "",
     val name: String = "",
     val imageUrl: String = "",
-    val isOpen: Boolean = true
+    val isOpen: Boolean = true ,
+    val isInstantDeliveryAvailable: Boolean = false
 )
