@@ -41,7 +41,6 @@ fun RestaurantMenuScreen(
     restaurantName: String?,
     onNavigateBack: () -> Unit,
     onAddToCart: (Restaurant, Map<String, CartItem>) -> Unit,
-    // Add a new action for placing an order directly
     onPlaceOrder: (Restaurant, Map<String, CartItem>) -> Unit,
     menuViewModel: RestaurantMenuViewModel = viewModel()
 ) {
@@ -57,20 +56,18 @@ fun RestaurantMenuScreen(
             )
         },
         bottomBar = {
-            // THE UI CHANGE: The bottom bar is now a Row with two buttons
             AnimatedVisibility(visible = temporarySelection.isNotEmpty()) {
                 Row(
                     modifier = Modifier.fillMaxWidth().background(Color.White).padding(16.dp),
                     horizontalArrangement = Arrangement.spacedBy(16.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Add to Cart Button (less prominent)
                     Button(
                         onClick = {
                             restaurantDetails?.let {
                                 onAddToCart(it, temporarySelection)
                                 menuViewModel.clearTemporarySelection()
-                                onNavigateBack() // Go back after adding to cart
+                                onNavigateBack()
                             }
                         },
                         modifier = Modifier.weight(1f),
@@ -81,7 +78,6 @@ fun RestaurantMenuScreen(
                         Text("Add to Cart")
                     }
 
-                    // Place Order Button (more prominent)
                     Button(
                         onClick = {
                             restaurantDetails?.let {
@@ -100,7 +96,6 @@ fun RestaurantMenuScreen(
             }
         }
     ) { paddingValues ->
-        // The main content of the screen remains the same
         if (restaurantDetails == null) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
@@ -145,8 +140,6 @@ fun RestaurantMenuScreen(
     }
 }
 
-// DeliveryStatusIndicator, PreOrderCard, and FoodItemCard functions are unchanged
-// and must be present in the file.
 @Composable
 fun DeliveryStatusIndicator(isAvailable: Boolean) {
     val backgroundColor = if (isAvailable) Color(0xFFC8E6C9) else Color(0xFFFFCDD2)
@@ -183,14 +176,14 @@ fun PreOrderCard(title: String, time: String, delivery: String) {
     }
 }
 
+// THE FIX IS HERE
 @Composable
 fun FoodItemCard(foodItem: FoodItem, quantity: Int, enabled: Boolean, onQuantityChange: (Int) -> Unit) {
-    val contentColor = if (enabled) Color.Unspecified else Color.Gray
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = if (enabled) 1f else 0.6f))
+        colors = CardDefaults.cardColors(containerColor = Color.White)
     ) {
         Row(
             modifier = Modifier.padding(8.dp),
@@ -200,13 +193,13 @@ fun FoodItemCard(foodItem: FoodItem, quantity: Int, enabled: Boolean, onQuantity
                 painter = rememberAsyncImagePainter(model = foodItem.imageUrl),
                 contentDescription = foodItem.name,
                 contentScale = ContentScale.Crop,
-                modifier = Modifier.size(80.dp).clip(RoundedCornerShape(8.dp)),
-                alpha = if (enabled) 1f else 0.5f
+                modifier = Modifier.size(80.dp).clip(RoundedCornerShape(8.dp))
             )
             Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(foodItem.name, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = contentColor)
-                Text("Price: ${foodItem.price} BDT", color = MaterialTheme.colorScheme.primary.copy(alpha = if (enabled) 1f else 0.5f))
+                // Name and Price now have fixed, normal colors
+                Text(foodItem.name, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Text("Price: ${foodItem.price} BDT", color = MaterialTheme.colorScheme.primary)
             }
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -216,7 +209,8 @@ fun FoodItemCard(foodItem: FoodItem, quantity: Int, enabled: Boolean, onQuantity
                     IconButton(onClick = { onQuantityChange(-1) }, enabled = enabled, modifier = Modifier.size(32.dp)) {
                         Icon(Icons.Default.Remove, "Remove one", tint = if (enabled) MaterialTheme.colorScheme.primary else Color.Gray)
                     }
-                    Text("$quantity", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = contentColor)
+                    // Quantity text is grayed out to show it's part of the disabled controls
+                    Text("$quantity", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = if (enabled) Color.Unspecified else Color.Gray)
                 }
                 IconButton(onClick = { onQuantityChange(1) }, enabled = enabled, modifier = Modifier.size(32.dp)) {
                     Icon(Icons.Default.Add, "Add one", tint = if (enabled) Color.White else Color.LightGray, modifier = Modifier.background(if (enabled) MaterialTheme.colorScheme.primary else Color.Gray, CircleShape).padding(4.dp))
