@@ -84,7 +84,6 @@ fun MainScreen() {
                     })
                 }
                 composable(NavigationItem.Cart.route) {
-                    // Pass the cartViewModel to the CartScreen
                     CartScreen(cartViewModel = cartViewModel)
                 }
                 composable(NavigationItem.Orders.route) { OrdersScreen() }
@@ -103,10 +102,14 @@ fun MainScreen() {
                     RestaurantMenuScreen(
                         restaurantName = restaurantName,
                         onNavigateBack = { navController.popBackStack() },
-                        cartViewModel = cartViewModel,
-                        // THE NEW LOGIC: This now calls the method in our CartViewModel
                         onAddToCart = { restaurant, selection ->
                             cartViewModel.addSelectionToCart(restaurant, selection)
+                        },
+                        // Define the new "Place Order" behavior
+                        onPlaceOrder = { restaurant, selection ->
+                            cartViewModel.addSelectionToCart(restaurant, selection)
+                            // Immediately navigate to the cart for confirmation
+                            navController.navigate(NavigationItem.Cart.route)
                         }
                     )
                 }
