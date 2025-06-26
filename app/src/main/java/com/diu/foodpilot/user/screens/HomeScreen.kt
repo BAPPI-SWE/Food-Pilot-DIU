@@ -1,22 +1,25 @@
 
-// --- File 2: HomeScreen.kt (UPDATED) ---
-// Open this file and replace its contents. We are adding the 'onRestaurantClick' parameter.
-
-@file:OptIn(ExperimentalMaterial3Api::class)
+@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 
 package com.diu.foodpilot.user.screens
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -24,23 +27,26 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.rememberAsyncImagePainter
 import com.diu.foodpilot.user.data.model.Restaurant
-import com.diu.foodpilot.user.ui.theme.LightPink
+import com.diu.foodpilot.user.ui.theme.TextSecondary
 import com.diu.foodpilot.user.viewmodel.HomeViewModel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.yield
+import kotlin.math.absoluteValue
 
 @Composable
 fun HomeScreen(
     homeViewModel: HomeViewModel = viewModel(),
-    onRestaurantClick: (restaurantId: String, restaurantName: String) -> Unit // New parameter
+    onRestaurantClick: (restaurantId: String, restaurantName: String) -> Unit
 ) {
     val restaurants by homeViewModel.restaurants.collectAsState()
     var searchQuery by remember { mutableStateOf("") }
@@ -49,101 +55,136 @@ fun HomeScreen(
         topBar = {
             TopAppBar(
                 title = { Text("Food Pilot DIU") },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = Color.White
-                )
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.primary, titleContentColor = Color.White)
             )
         }
     ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .background(LightPink)
+        LazyColumn(
+            modifier = Modifier.fillMaxSize().padding(paddingValues).background(MaterialTheme.colorScheme.surface)
         ) {
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = { searchQuery = it },
-                label = { Text("Find Restaurants") },
-                leadingIcon = { Icon(Icons.Filled.Search, contentDescription = "Search Icon") },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                shape = RoundedCornerShape(24.dp)
-            )
+            // Search Bar
+            item {
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    label = { Text("Find Restaurants") },
+                    leadingIcon = { Icon(Icons.Filled.Search, contentDescription = "Search Icon") },
+                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                    shape = RoundedCornerShape(24.dp)
+                )
+            }
 
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                items(restaurants.filter { it.name.contains(searchQuery, ignoreCase = true) }) { restaurant ->
-                    RestaurantCard(restaurant = restaurant) {
-                        // Pass the id and name to the lambda when clicked
-                        onRestaurantClick(restaurant.id, restaurant.name)
-                    }
-                }
+            // --- Offer Slider ---
+            item {
+                OfferSlider()
+            }
+
+            // Section Header
+            item {
+                Text(
+                    text = "All Restaurants",
+                    style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
+                    modifier = Modifier.padding(start = 16.dp, top = 24.dp, bottom = 8.dp)
+                )
+            }
+
+            // Restaurant List
+            items(restaurants.filter { it.name.contains(searchQuery, ignoreCase = true) }) { restaurant ->
+                ModernRestaurantCard(
+                    restaurant = restaurant,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    onClick = { onRestaurantClick(restaurant.id, restaurant.name) }
+                )
             }
         }
     }
 }
 
-// A reusable composable for displaying a single restaurant card
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun RestaurantCard(restaurant: Restaurant, onClick: () -> Unit) {
-    // Generate a unique, stable color based on the restaurant's name hash code
-    val cardColors = listOf(
-        Color(0xFFFCE4EC), Color(0xFFF3E5F5), Color(0xFFE8EAF6),
-        Color(0xFFE3F2FD), Color(0xFFE0F7FA), Color(0xFFE8F5E9)
+fun OfferSlider() {
+    val offers = listOf(
+        "https://placehold.co/800x400/E53935/FFFFFF?text=20%25+OFF+Kacchi",
+        "https://placehold.co/800x400/1E88E5/FFFFFF?text=BOGO+Pizza",
+        "https://placehold.co/800x400/43A047/FFFFFF?text=Free+Delivery"
     )
-    val cardColor = remember(restaurant.id) {
-        cardColors[java.lang.Math.abs(restaurant.id.hashCode()) % cardColors.size]
+    val pagerState = rememberPagerState(pageCount = { offers.size })
+
+    // Auto-scroll effect
+    LaunchedEffect(Unit) {
+        while(true) {
+            yield()
+            delay(4000)
+            pagerState.animateScrollToPage(
+                page = (pagerState.currentPage + 1) % pagerState.pageCount
+            )
+        }
     }
 
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .height(180.dp)
-                .background(cardColor)
+    HorizontalPager(
+        state = pagerState,
+        modifier = Modifier.height(180.dp),
+        contentPadding = PaddingValues(horizontal = 32.dp)
+    ) { page ->
+        Card(
+            Modifier
+                .graphicsLayer {
+                    val pageOffset = (
+                            (pagerState.currentPage - page) + pagerState
+                                .currentPageOffsetFraction
+                            ).absoluteValue
+                    alpha = lerp(0.5f, 1f, 1f - pageOffset.coerceIn(0f, 1f))
+                }
+                .fillMaxWidth()
+                .padding(8.dp),
+            shape = RoundedCornerShape(16.dp),
         ) {
-            // Background Image
             Image(
-                painter = rememberAsyncImagePainter(restaurant.imageUrl),
-                contentDescription = restaurant.name,
+                painter = rememberAsyncImagePainter(model = offers[page]),
+                contentDescription = "Offer",
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize()
             )
+        }
+    }
+}
 
-            // Gradient overlay for text readability
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.8f)),
-                            startY = 300f
-                        )
+// Simple linear interpolation
+fun lerp(start: Float, stop: Float, fraction: Float): Float {
+    return (1 - fraction) * start + fraction * stop
+}
+
+// The new modern card inspired by your reference
+@Composable
+fun ModernRestaurantCard(restaurant: Restaurant, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    Card(
+        modifier = modifier.fillMaxWidth().clickable(onClick = onClick),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.background),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column {
+            Image(
+                painter = rememberAsyncImagePainter(model = restaurant.imageUrl),
+                contentDescription = restaurant.name,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxWidth().height(140.dp)
+            )
+            Column(modifier = Modifier.padding(12.dp)) {
+                Text(restaurant.name, style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold))
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Filled.Star, contentDescription = "Rating", tint = Color(0xFFFFC107), modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = "${restaurant.rating} • ${restaurant.deliveryTime} • ${restaurant.cuisine}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = TextSecondary
                     )
-            )
-
-            // Restaurant Name
-            Text(
-                text = restaurant.name,
-                color = Color.White,
-                fontSize = 22.sp,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center,
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(12.dp)
-            )
+                }
+                Spacer(modifier = Modifier.height(4.dp))
+                Text("৳ ${restaurant.deliveryFee} Delivery Fee", style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
+            }
         }
     }
 }

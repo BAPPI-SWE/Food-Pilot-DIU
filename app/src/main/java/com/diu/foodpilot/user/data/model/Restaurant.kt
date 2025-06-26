@@ -1,8 +1,6 @@
 
-
 package com.diu.foodpilot.user.data.model
 
-// 1. Add this import statement at the top.
 import com.google.firebase.firestore.PropertyName
 
 data class Restaurant(
@@ -11,9 +9,12 @@ data class Restaurant(
     val imageUrl: String = "",
     val isOpen: Boolean = true,
 
-    // 2. Add this annotation right above the property.
-    // This explicitly tells the app to look for the field "isInstantDeliveryAvailable"
-    // in the Firestore document.
+    // --- NEW FIELDS for Modern UI ---
+    val rating: Double = 0.0,
+    val deliveryTime: String = "20-30 min", // e.g., "20-30 min"
+    val deliveryFee: String = "2" ,// e.g., 25
+    val cuisine: String = "Fast Food", // e.g., "Biryani", "Chinese"
+
     @get:PropertyName("isInstantDeliveryAvailable")
     val isInstantDeliveryAvailable: Boolean = false
 )

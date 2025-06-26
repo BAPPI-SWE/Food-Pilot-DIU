@@ -1,3 +1,5 @@
+// Open this file: app/src/main/java/com/diu/foodpilot/user/screens/CartScreen.kt
+// Replace its entire contents with this modernized version.
 
 @file:OptIn(ExperimentalMaterial3Api::class)
 
@@ -6,7 +8,6 @@ package com.diu.foodpilot.user.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -23,7 +24,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.diu.foodpilot.user.ui.theme.LightPink
 import com.diu.foodpilot.user.viewmodel.CartViewModel
 import com.diu.foodpilot.user.viewmodel.RestaurantCart
 
@@ -42,12 +42,15 @@ fun CartScreen(cartViewModel: CartViewModel) {
             )
         }
     ) { paddingValues ->
+        // THE FIX: Using the new modern background color from the theme
+        val backgroundColor = MaterialTheme.colorScheme.surface
+
         if (restaurantCarts.isEmpty()) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues)
-                    .background(LightPink),
+                    .background(backgroundColor),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
@@ -62,11 +65,10 @@ fun CartScreen(cartViewModel: CartViewModel) {
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues)
-                    .background(LightPink),
+                    .background(backgroundColor),
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(24.dp)
             ) {
-                // Iterate through each restaurant's cart
                 restaurantCarts.values.forEach { restaurantCart ->
                     item {
                         RestaurantCartSection(
@@ -92,11 +94,11 @@ fun RestaurantCartSection(
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        // THE FIX: Using the new modern background color from the theme
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.background),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            // Restaurant Header
             Text(
                 restaurantCart.restaurant.name,
                 style = MaterialTheme.typography.headlineMedium,
@@ -104,7 +106,6 @@ fun RestaurantCartSection(
             )
             Divider(modifier = Modifier.padding(vertical = 8.dp))
 
-            // List of items for this restaurant
             restaurantCart.items.forEach { cartItem ->
                 Row(
                     modifier = Modifier.padding(vertical = 8.dp),
@@ -130,7 +131,6 @@ fun RestaurantCartSection(
             }
             Divider(modifier = Modifier.padding(vertical = 8.dp))
 
-            // Total and Place Order Button
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
