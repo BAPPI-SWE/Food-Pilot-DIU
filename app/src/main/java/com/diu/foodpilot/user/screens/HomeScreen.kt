@@ -1,3 +1,5 @@
+// Open this file: app/src/main/java/com/diu/foodpilot/user/screens/HomeScreen.kt
+// Replace its entire contents with this version.
 
 @file:OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 
@@ -12,11 +14,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -27,7 +29,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
@@ -36,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.rememberAsyncImagePainter
+import com.diu.foodpilot.user.data.model.Offer
 import com.diu.foodpilot.user.data.model.Restaurant
 import com.diu.foodpilot.user.ui.theme.TextSecondary
 import com.diu.foodpilot.user.viewmodel.HomeViewModel
@@ -49,37 +51,33 @@ fun HomeScreen(
     onRestaurantClick: (restaurantId: String, restaurantName: String) -> Unit
 ) {
     val restaurants by homeViewModel.restaurants.collectAsState()
+    val offers by homeViewModel.offers.collectAsState()
     var searchQuery by remember { mutableStateOf("") }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Food Pilot DIU") },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.primary, titleContentColor = Color.White)
-            )
-        }
-    ) { paddingValues ->
+    // We use a Scaffold without a topBar to get the correct background and padding.
+    Scaffold { paddingValues ->
         LazyColumn(
-            modifier = Modifier.fillMaxSize().padding(paddingValues).background(MaterialTheme.colorScheme.surface)
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues) // This handles insets like the status bar
+                .background(MaterialTheme.colorScheme.surface)
         ) {
-            // Search Bar
+            // Item 1: The new modern header
             item {
-                OutlinedTextField(
-                    value = searchQuery,
-                    onValueChange = { searchQuery = it },
-                    label = { Text("Find Restaurants") },
-                    leadingIcon = { Icon(Icons.Filled.Search, contentDescription = "Search Icon") },
-                    modifier = Modifier.fillMaxWidth().padding(16.dp),
-                    shape = RoundedCornerShape(24.dp)
+                HomeHeader(
+                    searchQuery = searchQuery,
+                    onQueryChange = { searchQuery = it }
                 )
             }
 
-            // --- Offer Slider ---
+            // Item 2: Offer Slider
             item {
-                OfferSlider()
+                if (offers.isNotEmpty()) {
+                    OfferSlider(offers = offers)
+                }
             }
 
-            // Section Header
+            // Item 3: "All Restaurants" title
             item {
                 Text(
                     text = "All Restaurants",
@@ -88,7 +86,7 @@ fun HomeScreen(
                 )
             }
 
-            // Restaurant List
+            // The list of restaurants
             items(restaurants.filter { it.name.contains(searchQuery, ignoreCase = true) }) { restaurant ->
                 ModernRestaurantCard(
                     restaurant = restaurant,
@@ -100,24 +98,65 @@ fun HomeScreen(
     }
 }
 
+// The new, modern header composable
+@Composable
+fun HomeHeader(searchQuery: String, onQueryChange: (String) -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.primary)
+            .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 24.dp)
+    ) {
+        // Top row: Deliver to & Notification Icon
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column {
+                Text("DELIVER TO", color = Color.White.copy(alpha = 0.8f), fontSize = 12.sp)
+                Text("Daffodil Smart City, Ashulia", color = Color.White, fontWeight = FontWeight.Bold)
+            }
+            IconButton(onClick = { /* TODO */ }) {
+                Icon(Icons.Outlined.Notifications, contentDescription = "Notifications", tint = Color.White)
+            }
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Search Bar, now integrated into the header
+        TextField(
+            value = searchQuery,
+            onValueChange = onQueryChange,
+            placeholder = { Text("Search restaurants & food...") },
+            leadingIcon = { Icon(Icons.Filled.Search, contentDescription = "Search Icon") },
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            colors = TextFieldDefaults.colors(
+                focusedContainerColor = Color.White,
+                unfocusedContainerColor = Color.White,
+                disabledContainerColor = Color.White,
+                focusedIndicatorColor = Color.Transparent,
+                unfocusedIndicatorColor = Color.Transparent,
+            )
+        )
+    }
+}
+
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun OfferSlider() {
-    val offers = listOf(
-        "https://placehold.co/800x400/E53935/FFFFFF?text=20%25+OFF+Kacchi",
-        "https://placehold.co/800x400/1E88E5/FFFFFF?text=BOGO+Pizza",
-        "https://placehold.co/800x400/43A047/FFFFFF?text=Free+Delivery"
-    )
+fun OfferSlider(offers: List<Offer>) {
     val pagerState = rememberPagerState(pageCount = { offers.size })
 
-    // Auto-scroll effect
     LaunchedEffect(Unit) {
         while(true) {
             yield()
             delay(4000)
-            pagerState.animateScrollToPage(
-                page = (pagerState.currentPage + 1) % pagerState.pageCount
-            )
+            if (pagerState.pageCount > 0) {
+                pagerState.animateScrollToPage(
+                    page = (pagerState.currentPage + 1) % pagerState.pageCount
+                )
+            }
         }
     }
 
@@ -129,10 +168,7 @@ fun OfferSlider() {
         Card(
             Modifier
                 .graphicsLayer {
-                    val pageOffset = (
-                            (pagerState.currentPage - page) + pagerState
-                                .currentPageOffsetFraction
-                            ).absoluteValue
+                    val pageOffset = ((pagerState.currentPage - page) + pagerState.currentPageOffsetFraction).absoluteValue
                     alpha = lerp(0.5f, 1f, 1f - pageOffset.coerceIn(0f, 1f))
                 }
                 .fillMaxWidth()
@@ -140,7 +176,7 @@ fun OfferSlider() {
             shape = RoundedCornerShape(16.dp),
         ) {
             Image(
-                painter = rememberAsyncImagePainter(model = offers[page]),
+                painter = rememberAsyncImagePainter(model = offers[page].imageUrl),
                 contentDescription = "Offer",
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize()
@@ -149,12 +185,10 @@ fun OfferSlider() {
     }
 }
 
-// Simple linear interpolation
 fun lerp(start: Float, stop: Float, fraction: Float): Float {
     return (1 - fraction) * start + fraction * stop
 }
 
-// The new modern card inspired by your reference
 @Composable
 fun ModernRestaurantCard(restaurant: Restaurant, modifier: Modifier = Modifier, onClick: () -> Unit) {
     Card(

@@ -1,58 +1,71 @@
+
 package com.diu.foodpilot.user.viewmodel
-
-
-
 
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.diu.foodpilot.user.data.model.Offer // <-- Add this import
 import com.diu.foodpilot.user.data.model.Restaurant
+import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-// A ViewModel's job is to provide data to the UI and survive configuration changes.
-// This ViewModel will fetch and hold our list of restaurants.
 class HomeViewModel : ViewModel() {
 
-    // Get a reference to the Firestore database
     private val db = Firebase.firestore
 
-    // This is a private, mutable state flow.
-    // We will update this with the list of restaurants from Firestore.
+    // --- Restaurants ---
     private val _restaurants = MutableStateFlow<List<Restaurant>>(emptyList())
+    val restaurants: StateFlow<List<Restaurant>> = _restaurants.asStateFlow()
 
-    // This is the public, read-only state flow that the UI will observe.
-    val restaurants: StateFlow<List<Restaurant>> = _restaurants
+    // --- NEW: Offers ---
+    private val _offers = MutableStateFlow<List<Offer>>(emptyList())
+    val offers: StateFlow<List<Offer>> = _offers.asStateFlow()
 
-    // init block is called when the ViewModel is created.
     init {
         fetchRestaurants()
+        fetchOffers() // <-- Call the new function
+    }
+
+    // --- NEW: Function to fetch offers from Firestore ---
+    private fun fetchOffers() {
+        viewModelScope.launch {
+            db.collection("offers")
+                .orderBy("order", Query.Direction.ASCENDING) // Order slides by the 'order' field
+                .addSnapshotListener { snapshot, e ->
+                    if (e != null) {
+                        Log.w("HomeViewModel", "Offer listen failed.", e)
+                        return@addSnapshotListener
+                    }
+
+                    if (snapshot != null) {
+                        _offers.value = snapshot.toObjects(Offer::class.java)
+                    }
+                }
+        }
     }
 
     private fun fetchRestaurants() {
-        // We use viewModelScope.launch to start a coroutine that will
-        // live as long as the ViewModel.
         viewModelScope.launch {
             db.collection("restaurants")
                 .addSnapshotListener { snapshot, e ->
                     if (e != null) {
-                        Log.w("HomeViewModel", "Listen failed.", e)
+                        Log.w("HomeViewModel", "Restaurant listen failed.", e)
                         return@addSnapshotListener
                     }
 
                     if (snapshot != null && !snapshot.isEmpty) {
-                        // Map the documents to our Restaurant data class
                         val restaurantList = snapshot.documents.mapNotNull {
                             val restaurant = it.toObject(Restaurant::class.java)
-                            // We set the document ID here
                             restaurant?.copy(id = it.id)
                         }
                         _restaurants.value = restaurantList
                     } else {
-                        Log.d("HomeViewModel", "Current data: null")
+                        Log.d("HomeViewModel", "Restaurant data: null")
                     }
                 }
         }
