@@ -1,10 +1,12 @@
 
+
 @file:OptIn(ExperimentalMaterial3Api::class)
 
 package com.diu.foodpilot.user
 
 import android.annotation.SuppressLint
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -55,9 +57,7 @@ fun MainScreen() {
                         selected = currentRoute?.startsWith(item.route) == true,
                         onClick = {
                             navController.navigate(item.route) {
-                                popUpTo(navController.graph.findStartDestination().id) {
-                                    saveState = true
-                                }
+                                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
                                 launchSingleTop = true
                                 restoreState = true
                             }
@@ -75,44 +75,44 @@ fun MainScreen() {
             }
         }
     ) { innerPadding ->
-        Box(modifier = Modifier.padding(innerPadding)) {
-            NavHost(navController, startDestination = NavigationItem.Home.route) {
-                composable(NavigationItem.Home.route) {
-                    HomeScreen(onRestaurantClick = { restaurantId, restaurantName ->
-                        val encodedName = URLEncoder.encode(restaurantName, StandardCharsets.UTF_8.toString())
-                        navController.navigate("restaurant_menu/$restaurantId/$encodedName")
-                    })
-                }
-                composable(NavigationItem.Cart.route) {
-                    CartScreen(cartViewModel = cartViewModel)
-                }
-                composable(NavigationItem.Orders.route) { OrdersScreen() }
-                composable(NavigationItem.Profile.route) { ProfileScreen() }
+        // THE FIX: We apply the padding from the Scaffold directly to the NavHost,
+        // which allows each screen to manage its own top padding.
+        NavHost(
+            navController,
+            startDestination = NavigationItem.Home.route,
+            modifier = Modifier.padding(PaddingValues(bottom = innerPadding.calculateBottomPadding()))
+        ) {
+            composable(NavigationItem.Home.route) {
+                HomeScreen(onRestaurantClick = { restaurantId, restaurantName ->
+                    val encodedName = URLEncoder.encode(restaurantName, StandardCharsets.UTF_8.toString())
+                    navController.navigate("restaurant_menu/$restaurantId/$encodedName")
+                })
+            }
+            composable(NavigationItem.Cart.route) { CartScreen(cartViewModel = cartViewModel) }
+            composable(NavigationItem.Orders.route) { OrdersScreen() }
+            composable(NavigationItem.Profile.route) { ProfileScreen() }
 
-                composable(
-                    "restaurant_menu/{restaurantId}/{restaurantName}",
-                    arguments = listOf(
-                        navArgument("restaurantId") { type = NavType.StringType },
-                        navArgument("restaurantName") { type = NavType.StringType }
-                    )
-                ) { backStackEntry ->
-                    val restaurantName = backStackEntry.arguments?.getString("restaurantName")?.let {
-                        URLDecoder.decode(it, StandardCharsets.UTF_8.toString())
-                    }
-                    RestaurantMenuScreen(
-                        restaurantName = restaurantName,
-                        onNavigateBack = { navController.popBackStack() },
-                        onAddToCart = { restaurant, selection ->
-                            cartViewModel.addSelectionToCart(restaurant, selection)
-                        },
-                        // Define the new "Place Order" behavior
-                        onPlaceOrder = { restaurant, selection ->
-                            cartViewModel.addSelectionToCart(restaurant, selection)
-                            // Immediately navigate to the cart for confirmation
-                            navController.navigate(NavigationItem.Cart.route)
-                        }
-                    )
+            composable(
+                "restaurant_menu/{restaurantId}/{restaurantName}",
+                arguments = listOf(
+                    navArgument("restaurantId") { type = NavType.StringType },
+                    navArgument("restaurantName") { type = NavType.StringType }
+                )
+            ) { backStackEntry ->
+                val restaurantName = backStackEntry.arguments?.getString("restaurantName")?.let {
+                    URLDecoder.decode(it, StandardCharsets.UTF_8.toString())
                 }
+                RestaurantMenuScreen(
+                    restaurantName = restaurantName,
+                    onNavigateBack = { navController.popBackStack() },
+                    onAddToCart = { restaurant, selection ->
+                        cartViewModel.addSelectionToCart(restaurant, selection)
+                    },
+                    onPlaceOrder = { restaurant, selection ->
+                        cartViewModel.addSelectionToCart(restaurant, selection)
+                        navController.navigate(NavigationItem.Cart.route)
+                    }
+                )
             }
         }
     }

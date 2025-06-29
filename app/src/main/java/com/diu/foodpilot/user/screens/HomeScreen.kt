@@ -54,30 +54,29 @@ fun HomeScreen(
     val offers by homeViewModel.offers.collectAsState()
     var searchQuery by remember { mutableStateOf("") }
 
-    // We use a Scaffold without a topBar to get the correct background and padding.
-    Scaffold { paddingValues ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues) // This handles insets like the status bar
-                .background(MaterialTheme.colorScheme.surface)
-        ) {
-            // Item 1: The new modern header
-            item {
-                HomeHeader(
-                    searchQuery = searchQuery,
-                    onQueryChange = { searchQuery = it }
-                )
-            }
+    // THE FIX: We use a Column as the main layout.
+    // The Scaffold in MainScreen handles the bottom navigation bar padding.
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.surface)
+    ) {
+        // The header is now the first item in the column.
+        HomeHeader(
+            searchQuery = searchQuery,
+            onQueryChange = { searchQuery = it }
+        )
 
-            // Item 2: Offer Slider
+        // The rest of the content is in a LazyColumn that takes up the remaining space.
+        LazyColumn(
+            modifier = Modifier.fillMaxSize()
+        ) {
             item {
                 if (offers.isNotEmpty()) {
                     OfferSlider(offers = offers)
                 }
             }
 
-            // Item 3: "All Restaurants" title
             item {
                 Text(
                     text = "All Restaurants",
@@ -86,7 +85,6 @@ fun HomeScreen(
                 )
             }
 
-            // The list of restaurants
             items(restaurants.filter { it.name.contains(searchQuery, ignoreCase = true) }) { restaurant ->
                 ModernRestaurantCard(
                     restaurant = restaurant,
@@ -98,16 +96,17 @@ fun HomeScreen(
     }
 }
 
-// The new, modern header composable
+// THE FIX: The header now applies the status bar padding internally.
 @Composable
 fun HomeHeader(searchQuery: String, onQueryChange: (String) -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .background(MaterialTheme.colorScheme.primary)
+            // This is the key change: apply padding to account for the status bar.
+            .padding(WindowInsets.statusBars.asPaddingValues())
             .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 24.dp)
     ) {
-        // Top row: Deliver to & Notification Icon
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -123,7 +122,6 @@ fun HomeHeader(searchQuery: String, onQueryChange: (String) -> Unit) {
         }
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Search Bar, now integrated into the header
         TextField(
             value = searchQuery,
             onValueChange = onQueryChange,
