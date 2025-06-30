@@ -83,4 +83,13 @@ dependencies {
     implementation("com.google.firebase:firebase-auth")
     // ...
 
+    // ... (all your other dependencies are here)
+
+    implementation("androidx.compose.material3:material3")
+    // ADD THIS LINE
+    implementation("androidx.compose.material:material:1.6.8")
+
+    implementation("androidx.compose.material:material-icons-extended-android:1.6.8")
+    // ... (the rest of your dependencies)
+
 }

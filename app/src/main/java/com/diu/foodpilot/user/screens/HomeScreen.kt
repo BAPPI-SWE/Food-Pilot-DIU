@@ -1,7 +1,7 @@
 // Open this file: app/src/main/java/com/diu/foodpilot/user/screens/HomeScreen.kt
 // Replace its entire contents with this version.
 
-@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
+@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class, ExperimentalMaterialApi::class)
 
 package com.diu.foodpilot.user.screens
 
@@ -15,18 +15,16 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.pullrefresh.PullRefreshIndicator
+import androidx.compose.material.pullrefresh.pullRefresh
+import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -53,57 +51,69 @@ fun HomeScreen(
     val restaurants by homeViewModel.restaurants.collectAsState()
     val offers by homeViewModel.offers.collectAsState()
     var searchQuery by remember { mutableStateOf("") }
+    val isRefreshing by homeViewModel.isRefreshing.collectAsState()
 
-    // THE FIX: We use a Column as the main layout.
-    // The Scaffold in MainScreen handles the bottom navigation bar padding.
-    Column(
+    val pullRefreshState = rememberPullRefreshState(
+        refreshing = isRefreshing,
+        onRefresh = { homeViewModel.refresh() }
+    )
+
+    // The main layout is now a Box to contain the refresh indicator
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.surface)
+            .pullRefresh(pullRefreshState)
     ) {
-        // The header is now the first item in the column.
-        HomeHeader(
-            searchQuery = searchQuery,
-            onQueryChange = { searchQuery = it }
-        )
+        Column(modifier = Modifier.fillMaxSize()) {
+            HomeHeader(
+                searchQuery = searchQuery,
+                onQueryChange = { searchQuery = it }
+            )
 
-        // The rest of the content is in a LazyColumn that takes up the remaining space.
-        LazyColumn(
-            modifier = Modifier.fillMaxSize()
-        ) {
-            item {
-                if (offers.isNotEmpty()) {
-                    OfferSlider(offers = offers)
+            LazyColumn(modifier = Modifier.fillMaxSize()) {
+                item {
+                    if (offers.isNotEmpty()) {
+                        OfferSlider(offers = offers)
+                    }
+                }
+                item {
+                    Text(
+                        text = "All Restaurants",
+                        style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
+                        modifier = Modifier.padding(start = 16.dp, top = 24.dp, bottom = 8.dp)
+                    )
+                }
+                items(restaurants.filter { it.name.contains(searchQuery, ignoreCase = true) }) { restaurant ->
+                    ModernRestaurantCard(
+                        restaurant = restaurant,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                        onClick = { onRestaurantClick(restaurant.id, restaurant.name) }
+                    )
                 }
             }
-
-            item {
-                Text(
-                    text = "All Restaurants",
-                    style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
-                    modifier = Modifier.padding(start = 16.dp, top = 24.dp, bottom = 8.dp)
-                )
-            }
-
-            items(restaurants.filter { it.name.contains(searchQuery, ignoreCase = true) }) { restaurant ->
-                ModernRestaurantCard(
-                    restaurant = restaurant,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                    onClick = { onRestaurantClick(restaurant.id, restaurant.name) }
-                )
-            }
         }
+
+        // The circular progress indicator
+        PullRefreshIndicator(
+            refreshing = isRefreshing,
+            state = pullRefreshState,
+            modifier = Modifier.align(Alignment.TopCenter),
+            // Move indicator below the header
+            scale = true,
+            contentColor = MaterialTheme.colorScheme.primary,
+            backgroundColor = MaterialTheme.colorScheme.surface
+        )
     }
 }
 
-// THE FIX: The header now applies the status bar padding internally.
+// HomeHeader, OfferSlider, and ModernRestaurantCard functions remain the same...
 @Composable
 fun HomeHeader(searchQuery: String, onQueryChange: (String) -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .background(MaterialTheme.colorScheme.primary)
-            // This is the key change: apply padding to account for the status bar.
             .padding(WindowInsets.statusBars.asPaddingValues())
             .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 24.dp)
     ) {
@@ -121,7 +131,6 @@ fun HomeHeader(searchQuery: String, onQueryChange: (String) -> Unit) {
             }
         }
         Spacer(modifier = Modifier.height(16.dp))
-
         TextField(
             value = searchQuery,
             onValueChange = onQueryChange,
@@ -140,12 +149,10 @@ fun HomeHeader(searchQuery: String, onQueryChange: (String) -> Unit) {
     }
 }
 
-
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun OfferSlider(offers: List<Offer>) {
     val pagerState = rememberPagerState(pageCount = { offers.size })
-
     LaunchedEffect(Unit) {
         while(true) {
             yield()
@@ -157,7 +164,6 @@ fun OfferSlider(offers: List<Offer>) {
             }
         }
     }
-
     HorizontalPager(
         state = pagerState,
         modifier = Modifier.height(180.dp),

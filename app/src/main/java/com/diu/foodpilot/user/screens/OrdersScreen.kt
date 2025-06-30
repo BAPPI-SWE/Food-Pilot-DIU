@@ -1,6 +1,7 @@
+// Open this file: app/src/main/java/com/diu/foodpilot/user/screens/OrdersScreen.kt
+// Replace its contents with this new version.
 
-
-@file:OptIn(ExperimentalMaterial3Api::class)
+@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)
 
 package com.diu.foodpilot.user.screens
 
@@ -9,6 +10,10 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.ExperimentalMaterialApi
+import androidx.compose.material.pullrefresh.PullRefreshIndicator
+import androidx.compose.material.pullrefresh.pullRefresh
+import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -29,6 +34,12 @@ import java.util.*
 @Composable
 fun OrdersScreen(ordersViewModel: OrdersViewModel = viewModel()) {
     val orders by ordersViewModel.orders.collectAsState()
+    val isRefreshing by ordersViewModel.isRefreshing.collectAsState()
+
+    val pullRefreshState = rememberPullRefreshState(
+        refreshing = isRefreshing,
+        onRefresh = { ordersViewModel.refresh() }
+    )
 
     Scaffold(
         topBar = {
@@ -41,34 +52,51 @@ fun OrdersScreen(ordersViewModel: OrdersViewModel = viewModel()) {
             )
         }
     ) { paddingValues ->
-        val backgroundColor = MaterialTheme.colorScheme.surface
-        if (orders.isEmpty()) {
-            Box(
-                modifier = Modifier.fillMaxSize().padding(paddingValues).background(backgroundColor),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    "You haven't placed any orders yet.",
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = Color.Gray,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(32.dp)
-                )
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize().padding(paddingValues).background(backgroundColor),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                items(orders) { order ->
-                    OrderCard(order = order)
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .pullRefresh(pullRefreshState)
+        ) {
+            val backgroundColor = MaterialTheme.colorScheme.surface
+            if (orders.isEmpty()) {
+                Box(
+                    modifier = Modifier.fillMaxSize().background(backgroundColor),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        "You haven't placed any orders yet.",
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = Color.Gray,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(32.dp)
+                    )
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize().background(backgroundColor),
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    items(orders) { order ->
+                        OrderCard(order = order)
+                    }
                 }
             }
+
+            PullRefreshIndicator(
+                refreshing = isRefreshing,
+                state = pullRefreshState,
+                modifier = Modifier.align(Alignment.TopCenter),
+                scale = true,
+                contentColor = MaterialTheme.colorScheme.primary,
+                backgroundColor = MaterialTheme.colorScheme.surface
+            )
         }
     }
 }
 
+// OrderCard, OrderDetailRow, StatusChip, and formatTimestamp functions remain the same...
 @Composable
 fun OrderCard(order: Order) {
     Card(
@@ -84,19 +112,16 @@ fun OrderCard(order: Order) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Order #${order.orderId.take(6)}...", // Show a short version of the ID
+                    text = "Order #${order.orderId.take(6)}...",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold
                 )
                 StatusChip(status = order.status)
             }
             Divider(modifier = Modifier.padding(vertical = 8.dp))
-
-            // Order Details
             OrderDetailRow(label = "Date", value = formatTimestamp(order.orderTimestamp))
             OrderDetailRow(label = "Total Items", value = order.items.sumOf { it.quantity }.toString())
             OrderDetailRow(label = "Total Price", value = "BDT ${"%.2f".format(order.totalPrice)}", isHighlight = true)
-
         }
     }
 }
@@ -126,7 +151,6 @@ fun StatusChip(status: String) {
         "cancelled" -> Color(0xFFFFCDD2) to Color(0xFFC62828)
         else -> Color.LightGray to Color.Black
     }
-
     Card(shape = RoundedCornerShape(8.dp), colors = CardDefaults.cardColors(containerColor = backgroundColor)) {
         Text(
             text = status,

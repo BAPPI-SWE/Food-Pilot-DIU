@@ -1,4 +1,6 @@
-
+// Open this file:
+// app/src/main/java/com/diu/foodpilot/user/viewmodel/OrdersViewModel.kt
+// Replace its contents with this new version.
 
 package com.diu.foodpilot.user.viewmodel
 
@@ -10,6 +12,7 @@ import com.google.firebase.auth.ktx.auth
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -24,8 +27,21 @@ class OrdersViewModel : ViewModel() {
     private val _orders = MutableStateFlow<List<Order>>(emptyList())
     val orders: StateFlow<List<Order>> = _orders.asStateFlow()
 
+    // NEW: State for pull-to-refresh
+    private val _isRefreshing = MutableStateFlow(false)
+    val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
+
     init {
         fetchOrders()
+    }
+
+    // NEW: Function to handle refresh logic
+    fun refresh() {
+        viewModelScope.launch {
+            _isRefreshing.value = true
+            delay(1000)
+            _isRefreshing.value = false
+        }
     }
 
     private fun fetchOrders() {
@@ -37,7 +53,7 @@ class OrdersViewModel : ViewModel() {
         viewModelScope.launch {
             db.collection("orders")
                 .whereEqualTo("userId", userId)
-                .orderBy("orderTimestamp", Query.Direction.DESCENDING) // Show newest orders first
+                .orderBy("orderTimestamp", Query.Direction.DESCENDING)
                 .addSnapshotListener { snapshot, e ->
                     if (e != null) {
                         Log.w("OrdersViewModel", "Listen failed.", e)
@@ -46,7 +62,6 @@ class OrdersViewModel : ViewModel() {
 
                     if (snapshot != null) {
                         val orderList = snapshot.toObjects(Order::class.java)
-                        // We need to manually add the document ID to our order object
                         val ordersWithIds = snapshot.documents.mapIndexed { index, document ->
                             orderList[index].copy(orderId = document.id)
                         }
