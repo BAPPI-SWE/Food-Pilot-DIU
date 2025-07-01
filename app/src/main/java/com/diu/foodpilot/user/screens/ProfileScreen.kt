@@ -1,3 +1,5 @@
+// Open this file: app/src/main/java/com/diu/foodpilot/user/screens/ProfileScreen.kt
+// Replace its contents with this updated version.
 
 @file:OptIn(ExperimentalMaterial3Api::class)
 
@@ -19,7 +21,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -28,12 +29,10 @@ import coil.compose.rememberAsyncImagePainter
 import com.diu.foodpilot.user.viewmodel.ProfileViewModel
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
-import kotlin.system.exitProcess
 
 @Composable
 fun ProfileScreen(profileViewModel: ProfileViewModel = viewModel()) {
     val user by profileViewModel.user.collectAsState()
-    val context = LocalContext.current
 
     var name by remember(user) { mutableStateOf(user?.name ?: "") }
     var phone by remember(user) { mutableStateOf(user?.phone ?: "") }
@@ -52,7 +51,6 @@ fun ProfileScreen(profileViewModel: ProfileViewModel = viewModel()) {
             )
         }
     ) { paddingValues ->
-        // THE FIX: Changed 'nil' to 'null'
         if (user == null) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
@@ -106,12 +104,11 @@ fun ProfileScreen(profileViewModel: ProfileViewModel = viewModel()) {
                     Text("Save Changes", fontSize = 18.sp)
                 }
                 Spacer(modifier = Modifier.height(16.dp))
+                // --- THE FIX: Simplified Sign Out Button ---
                 OutlinedButton(
                     onClick = {
+                        // Just sign out. The listener in MainActivity will handle the rest.
                         Firebase.auth.signOut()
-                        val activity = (context as? android.app.Activity)
-                        activity?.finish()
-                        exitProcess(0)
                     },
                     modifier = Modifier.fillMaxWidth(),
                     contentPadding = PaddingValues(16.dp)
@@ -125,7 +122,6 @@ fun ProfileScreen(profileViewModel: ProfileViewModel = viewModel()) {
     }
 }
 
-// THE FIX: Added the missing LocationDropdown composable function
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LocationDropdown(selectedOption: String, onOptionSelected: (String) -> Unit) {
