@@ -12,7 +12,20 @@
           "package_name": "com.diu.foodpilot.user"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "632945765824-97k4cqrm96fl3vfh9mvvci9leup6p80m.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.diu.foodpilot.user",
+            "certificate_hash": "7a2aa757606b1fa1d109eb5823d103168ab7192e"
+          }
+        },
+        {
+          "client_id": "632945765824-7a3n2a2jr6qv4i7djutp1v0b4klkiu94.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyAP9DRbdXN5hbkDJssgQAbTcEZevmzxz6s"
@@ -20,7 +33,41 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "632945765824-7a3n2a2jr6qv4i7djutp1v0b4klkiu94.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:632945765824:android:437905fdbd946b37efac25",
+        "android_client_info": {
+          "package_name": "com.diu.foodpilot.vendor"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "632945765824-7a3n2a2jr6qv4i7djutp1v0b4klkiu94.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAP9DRbdXN5hbkDJssgQAbTcEZevmzxz6s"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "632945765824-7a3n2a2jr6qv4i7djutp1v0b4klkiu94.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

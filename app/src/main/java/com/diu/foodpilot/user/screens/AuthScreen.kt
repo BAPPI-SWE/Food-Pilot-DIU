@@ -1,11 +1,14 @@
 
-
 @file:OptIn(ExperimentalMaterial3Api::class)
 
 package com.diu.foodpilot.user.screens
 
 import android.widget.Toast
-import androidx.compose.foundation.background
+import androidx.activity.compose.ManagedActivityResultLauncher
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.ActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -16,24 +19,32 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.diu.foodpilot.user.R
 import com.diu.foodpilot.user.viewmodel.AuthViewModel
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.common.api.ApiException
 
-// A parent composable to switch between Login and SignUp
 @Composable
-fun AuthScreen(onLoginSuccess: () -> Unit) {
+fun AuthScreen(
+    onLoginSuccess: () -> Unit,
+    googleSignInLauncher: ManagedActivityResultLauncher<android.content.Intent, ActivityResult>
+) {
     var showLogin by remember { mutableStateOf(true) }
 
     if (showLogin) {
         LoginScreen(
             onLoginSuccess = onLoginSuccess,
-            onNavigateToSignUp = { showLogin = false }
+            onNavigateToSignUp = { showLogin = false },
+            googleSignInLauncher = googleSignInLauncher
         )
     } else {
         SignUpScreen(
@@ -48,6 +59,7 @@ fun AuthScreen(onLoginSuccess: () -> Unit) {
 fun LoginScreen(
     onLoginSuccess: () -> Unit,
     onNavigateToSignUp: () -> Unit,
+    googleSignInLauncher: ManagedActivityResultLauncher<android.content.Intent, ActivityResult>,
     authViewModel: AuthViewModel = viewModel()
 ) {
     var email by remember { mutableStateOf("") }
@@ -55,7 +67,6 @@ fun LoginScreen(
     val context = LocalContext.current
     val authResult by authViewModel.authResult.collectAsState()
 
-    // Observe the result from the ViewModel
     LaunchedEffect(authResult) {
         if (authResult == "Success") {
             Toast.makeText(context, "Login Successful!", Toast.LENGTH_SHORT).show()
@@ -78,32 +89,28 @@ fun LoginScreen(
 
         OutlinedTextField(value = email, onValueChange = { email = it }, label = { Text("Email Address") }, modifier = Modifier.fillMaxWidth())
         Spacer(modifier = Modifier.height(16.dp))
-        OutlinedTextField(
-            value = password,
-            onValueChange = { password = it },
-            label = { Text("Password") },
-            modifier = Modifier.fillMaxWidth(),
-            visualTransformation = PasswordVisualTransformation(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
-        )
+        OutlinedTextField(value = password, onValueChange = { password = it }, label = { Text("Password") }, modifier = Modifier.fillMaxWidth(), visualTransformation = PasswordVisualTransformation(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password))
         Spacer(modifier = Modifier.height(24.dp))
-        Button(
-            onClick = { authViewModel.signIn(email, password) },
-            modifier = Modifier.fillMaxWidth(),
-            contentPadding = PaddingValues(16.dp)
-        ) {
+        Button(onClick = { authViewModel.signIn(email, password) }, modifier = Modifier.fillMaxWidth(), contentPadding = PaddingValues(16.dp)) {
             Text("Log In", fontSize = 18.sp)
         }
         Spacer(modifier = Modifier.height(16.dp))
-        Text(
-            "Don't have an account? Sign Up",
-            modifier = Modifier.clickable(onClick = onNavigateToSignUp),
-            color = MaterialTheme.colorScheme.primary
-        )
+
+        GoogleSignInButton {
+            val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                .requestIdToken(context.getString(R.string.default_web_client_id))
+                .requestEmail()
+                .build()
+            val googleSignInClient = GoogleSignIn.getClient(context, gso)
+            googleSignInLauncher.launch(googleSignInClient.signInIntent)
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+        Text("Don't have an account? Sign Up", modifier = Modifier.clickable(onClick = onNavigateToSignUp), color = MaterialTheme.colorScheme.primary)
     }
 }
 
-
+// THE FIX: The full implementation of SignUpScreen is now included.
 @Composable
 fun SignUpScreen(
     onSignUpSuccess: () -> Unit,
@@ -161,5 +168,19 @@ fun SignUpScreen(
             modifier = Modifier.clickable(onClick = onNavigateToLogin),
             color = MaterialTheme.colorScheme.primary
         )
+    }
+}
+
+@Composable
+fun GoogleSignInButton(onClick: () -> Unit) {
+    OutlinedButton(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        contentPadding = PaddingValues(vertical = 12.dp)
+    ) {
+        Image(painter = painterResource(id = R.drawable.ic_google_logo), contentDescription = "Google Logo", modifier = Modifier.size(24.dp))
+        Spacer(modifier = Modifier.width(16.dp))
+        Text("Sign In with Google", fontSize = 18.sp, color = MaterialTheme.colorScheme.onSurface)
     }
 }

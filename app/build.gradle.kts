@@ -91,5 +91,10 @@ dependencies {
 
     implementation("androidx.compose.material:material-icons-extended-android:1.6.8")
     // ... (the rest of your dependencies)
+    // Add this line for Google Sign-In
+    implementation("com.google.android.gms:play-services-auth:21.2.0")
+
+    implementation("androidx.compose.material3:material3")
+    // ... (the rest of your dependencies)
 
 }

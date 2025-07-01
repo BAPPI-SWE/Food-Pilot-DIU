@@ -1,10 +1,10 @@
 
-
 package com.diu.foodpilot.user.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -16,12 +16,23 @@ class AuthViewModel : ViewModel() {
 
     private val auth: FirebaseAuth = Firebase.auth
 
-    // Exposes the current logged-in user or null if not logged in
     val currentUser = auth.currentUser
 
-    // A flow to communicate the result of an auth action (success or error message)
     private val _authResult = MutableStateFlow<String?>(null)
     val authResult = _authResult.asStateFlow()
+
+    // --- NEW: Function to handle Google Sign-In ---
+    fun signInWithGoogle(idToken: String) {
+        viewModelScope.launch {
+            try {
+                val credential = GoogleAuthProvider.getCredential(idToken, null)
+                auth.signInWithCredential(credential).await()
+                _authResult.value = "Success"
+            } catch (e: Exception) {
+                _authResult.value = e.message
+            }
+        }
+    }
 
     fun signUp(email: String, pass: String) {
         viewModelScope.launch {
@@ -49,3 +60,4 @@ class AuthViewModel : ViewModel() {
         _authResult.value = null
     }
 }
+
