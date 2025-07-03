@@ -1,10 +1,13 @@
 // Open this file: app/src/main/java/com/diu/foodpilot/user/screens/ProfileScreen.kt
-// Replace its contents with this updated version.
+// Replace its entire contents with this new version.
 
 @file:OptIn(ExperimentalMaterial3Api::class)
 
 package com.diu.foodpilot.user.screens
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -33,12 +36,21 @@ import com.google.firebase.ktx.Firebase
 @Composable
 fun ProfileScreen(profileViewModel: ProfileViewModel = viewModel()) {
     val user by profileViewModel.user.collectAsState()
+    // Get the selected image URI from the ViewModel
+    val selectedImageUri by profileViewModel.selectedImageUri.collectAsState()
 
     var name by remember(user) { mutableStateOf(user?.name ?: "") }
     var phone by remember(user) { mutableStateOf(user?.phone ?: "") }
     var selectedHall by remember(user) { mutableStateOf(user?.address?.location ?: "Hall 1") }
     var floor by remember(user) { mutableStateOf(user?.address?.floor ?: "") }
     var room by remember(user) { mutableStateOf(user?.address?.room ?: "") }
+
+    // The launcher now calls the ViewModel to update the state
+    val imagePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        profileViewModel.onImageSelected(uri)
+    }
 
     Scaffold(
         topBar = {
@@ -67,13 +79,15 @@ fun ProfileScreen(profileViewModel: ProfileViewModel = viewModel()) {
             ) {
                 Box {
                     Image(
-                        painter = rememberAsyncImagePainter(model = user?.profileImageUrl ?: "https://placehold.co/400x400/E53935/FFFFFF?text=${name.firstOrNull() ?: 'P'}"),
+                        painter = rememberAsyncImagePainter(
+                            model = selectedImageUri ?: user?.profileImageUrl ?: "https://placehold.co/400x400/E53935/FFFFFF?text=${name.firstOrNull() ?: 'P'}"
+                        ),
                         contentDescription = "Profile Picture",
                         contentScale = ContentScale.Crop,
                         modifier = Modifier.size(120.dp).clip(CircleShape)
                     )
                     IconButton(
-                        onClick = { /* TODO: Handle image picking */ },
+                        onClick = { imagePickerLauncher.launch("image/*") },
                         modifier = Modifier.align(Alignment.BottomEnd).background(MaterialTheme.colorScheme.surface, CircleShape)
                     ) {
                         Icon(Icons.Filled.Edit, "Edit Picture", tint = MaterialTheme.colorScheme.primary)
@@ -104,12 +118,8 @@ fun ProfileScreen(profileViewModel: ProfileViewModel = viewModel()) {
                     Text("Save Changes", fontSize = 18.sp)
                 }
                 Spacer(modifier = Modifier.height(16.dp))
-                // --- THE FIX: Simplified Sign Out Button ---
                 OutlinedButton(
-                    onClick = {
-                        // Just sign out. The listener in MainActivity will handle the rest.
-                        Firebase.auth.signOut()
-                    },
+                    onClick = { Firebase.auth.signOut() },
                     modifier = Modifier.fillMaxWidth(),
                     contentPadding = PaddingValues(16.dp)
                 ) {

@@ -1,6 +1,10 @@
+// Open this file:
+// app/src/main/java/com/diu/foodpilot/user/viewmodel/ProfileViewModel.kt
+// Replace its entire contents with this new version.
 
 package com.diu.foodpilot.user.viewmodel
 
+import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -17,20 +21,25 @@ class ProfileViewModel : ViewModel() {
 
     private val db = Firebase.firestore
     private val auth = Firebase.auth
-
-    // THE FIX: Get the real user ID from Firebase Auth.
-    // The '?' ensures the app doesn't crash if the user is somehow null.
     private val userId = auth.currentUser?.uid
 
     private val _user = MutableStateFlow<User?>(null)
     val user: StateFlow<User?> = _user.asStateFlow()
 
+    // --- NEW: State to hold the selected image URI in the ViewModel ---
+    private val _selectedImageUri = MutableStateFlow<Uri?>(null)
+    val selectedImageUri: StateFlow<Uri?> = _selectedImageUri.asStateFlow()
+
     init {
         fetchUserProfile()
     }
 
+    // --- NEW: Function to update the selected image URI ---
+    fun onImageSelected(uri: Uri?) {
+        _selectedImageUri.value = uri
+    }
+
     private fun fetchUserProfile() {
-        // Only fetch if we have a real userId
         if (userId == null) {
             Log.e("ProfileViewModel", "Cannot fetch profile, user is not logged in.")
             return
