@@ -1,4 +1,15 @@
+
+// --- File 3: Update the existing User.kt file ---
 package com.diu.foodpilot.user.data.model
+
+// The Address data class is now more detailed
+data class Address(
+    val baseLocationName: String = "",
+    val subLocation: String = "",
+    val building: String = "",
+    val floor: String = "",
+    val room: String = ""
+)
 
 data class User(
     val uid: String = "",
@@ -7,10 +18,4 @@ data class User(
     val phone: String = "",
     val profileImageUrl: String? = null,
     val address: Address = Address()
-)
-
-data class Address(
-    val location: String = "Hall 1", // Can be "Hall 1", "Hall 2", "Faculty Room"
-    val floor: String = "",
-    val room: String = ""
 )

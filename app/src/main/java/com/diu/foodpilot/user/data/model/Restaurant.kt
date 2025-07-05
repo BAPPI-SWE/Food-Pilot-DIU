@@ -1,4 +1,3 @@
-
 package com.diu.foodpilot.user.data.model
 
 import com.google.firebase.firestore.PropertyName
@@ -8,13 +7,15 @@ data class Restaurant(
     val name: String = "",
     val imageUrl: String = "",
     val isOpen: Boolean = true,
-
-    // --- NEW FIELDS for Modern UI ---
     val rating: Double = 0.0,
-    val deliveryTime: String = "20-30 min", // e.g., "20-30 min"
-    val deliveryFee: String = "2" ,// e.g., 25
-    val cuisine: String = "Fast Food", // e.g., "Biryani", "Chinese"
+    val deliveryTime: String = "20-30 min",
+    val deliveryFee: String = "25", // Keeping as String as per your last fix
+    val cuisine: String = "Fast Food",
+
+    // This is the major change
+    val supportedLocations: Map<String, List<String>> = emptyMap(),
 
     @get:PropertyName("isInstantDeliveryAvailable")
     val isInstantDeliveryAvailable: Boolean = false
 )
+

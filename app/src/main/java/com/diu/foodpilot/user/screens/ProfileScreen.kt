@@ -24,6 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -36,8 +37,14 @@ import com.google.firebase.ktx.Firebase
 @Composable
 fun ProfileScreen(profileViewModel: ProfileViewModel = viewModel()) {
     val user by profileViewModel.user.collectAsState()
-    // Get the selected image URI from the ViewModel
     val selectedImageUri by profileViewModel.selectedImageUri.collectAsState()
+    val context = LocalContext.current
+
+    // This LaunchedEffect now triggers both the image loading AND the profile fetching.
+    LaunchedEffect(Unit) {
+        profileViewModel.loadInitialImage(context)
+        profileViewModel.fetchUserProfile()
+    }
 
     var name by remember(user) { mutableStateOf(user?.name ?: "") }
     var phone by remember(user) { mutableStateOf(user?.phone ?: "") }
@@ -45,11 +52,10 @@ fun ProfileScreen(profileViewModel: ProfileViewModel = viewModel()) {
     var floor by remember(user) { mutableStateOf(user?.address?.floor ?: "") }
     var room by remember(user) { mutableStateOf(user?.address?.room ?: "") }
 
-    // The launcher now calls the ViewModel to update the state
     val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
-        profileViewModel.onImageSelected(uri)
+        profileViewModel.onImageSelected(context, uri)
     }
 
     Scaffold(
@@ -79,6 +85,7 @@ fun ProfileScreen(profileViewModel: ProfileViewModel = viewModel()) {
             ) {
                 Box {
                     Image(
+                        // THE FIX: The invalid 'key' parameter has been removed.
                         painter = rememberAsyncImagePainter(
                             model = selectedImageUri ?: user?.profileImageUrl ?: "https://placehold.co/400x400/E53935/FFFFFF?text=${name.firstOrNull() ?: 'P'}"
                         ),
