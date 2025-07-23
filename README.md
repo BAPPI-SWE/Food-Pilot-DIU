@@ -1,4 +1,4 @@
-#Food Pilot DIU - Food Delivery App for University Campus
+# Food Pilot DIU - Food Delivery App for University Campus
 Food Pilot DIU is a modern Android application designed to solve a real-world problem for students and faculty at Daffodil International University (DIU). It provides a dedicated platform for ordering food from nearby restaurants for delivery to specific locations within the campus, such as residential halls and faculty rooms.
 
 This project was built as a learning journey into modern Android development, showcasing a complete, feature-rich user application built from the ground up.
